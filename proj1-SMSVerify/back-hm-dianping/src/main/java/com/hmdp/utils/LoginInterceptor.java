@@ -24,8 +24,11 @@ public class LoginInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response,
                              Object handler) throws Exception {
         // 判断是否需要拦截：即thread local中是否有用户
+        // threadlocal中的用户是前面的拦截器RefreshTokenInterceptor 添加的
         if (UserHolder.getUser() == null) {
+
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+
             return false;
         }
         // 有用户 放行

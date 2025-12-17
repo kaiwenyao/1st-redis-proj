@@ -28,6 +28,7 @@ public class MvcConfig implements WebMvcConfigurer {
                 "/user/login"
         ).order(1);
         // token刷新拦截器
+        // 只要用户有请求，就证明用户活跃，就要更新token有效期
         registry.addInterceptor(new RefreshTokenInterceptor(stringRedisTemplate)).addPathPatterns("/**").order(0);
     }
 }

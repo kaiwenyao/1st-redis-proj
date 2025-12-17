@@ -27,16 +27,18 @@ public class RefreshTokenInterceptor implements HandlerInterceptor {
         // 获取请求头中的token
         String token = request.getHeader("authorization");
         if (StrUtil.isBlank(token)) {
+            // 如果没有token 就放行
             return true;
         }
         // 基于token获取redis中的用户
         Map<Object, Object> userMap =
                 stringRedisTemplate.opsForHash().entries(LOGIN_USER_KEY + token);
         // 判断用户是否存在
-        // 不存在 拦截
         if (userMap.isEmpty()) {
+            // 用户为空 放行
             return true;
         }
+        // 到这里才确保有用户 才进行刷新
         // redis查询到的hash 转换成userDTO
         UserDTO userDTO = BeanUtil.fillBeanWithMap(userMap, new UserDTO(), false);
 

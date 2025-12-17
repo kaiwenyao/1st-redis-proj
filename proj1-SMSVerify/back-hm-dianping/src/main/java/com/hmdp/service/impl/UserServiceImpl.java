@@ -63,6 +63,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         if (RegexUtils.isPhoneInvalid(loginForm.getPhone())) {
             return Result.fail("手机号格式错误！");
         }
+        // 从redis获取验证码
         String cacheCode =
                 stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + loginForm.getPhone());
         String code = loginForm.getCode();
@@ -71,6 +72,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             return Result.fail("验证码错误！");
         }
         // 一致 查询用户是否存在
+        // 这里用到的是my batis plus
         User user = query().eq("phone", loginForm.getPhone()).one();
         if (user == null) {
             // 不存在 创建
@@ -78,15 +80,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         }
 
         // 保存到redis
-        // 生成随机token作为key
+        // 生成随机token作为key，也是登录的令牌。存储在redis中作为键
         // value是user DTO
         String token = UUID.randomUUID().toString(true);
+        // 讲user转化为hash存储
         UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
+
         Map<String, Object> userMap = BeanUtil.beanToMap(userDTO, new HashMap<>(),
                 CopyOptions.create()
                         .setIgnoreNullValue(true)
                         .setFieldValueEditor((fieldName, fieldValue) -> fieldValue.toString()));
-        // user转化为hash
+        // putAll方法可以存多个键值对 因为Map中就是有很多个键值对（字典
         stringRedisTemplate.opsForHash().putAll(LOGIN_USER_KEY + token, userMap);
         // 设置有效期
         stringRedisTemplate.expire(LOGIN_USER_KEY + token, LOGIN_USER_TTL, TimeUnit.MINUTES);

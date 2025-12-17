@@ -20,19 +20,27 @@ import static com.hmdp.utils.RedisConstants.*;
 @Slf4j
 @Component
 public class CacheClient {
+
     private final StringRedisTemplate stringRedisTemplate;
 
+    // 因为CacheClient添加了Component注解
+    // 所以构造函数需要的StringRedisTemplate，会由spring mvc自动传入参数进行构造。
     public CacheClient(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
     }
+    // 这里如果不使用构造函数进行StringRedisTemplate的注入，也可以在成员变量上面加上注解@Resource
+    // 但是！这个@Resource不是强制需要有一个StringRedisTemplate被注入。如果没有注入，也不会报错直到后面需要用到的时候才报错
+    // 而使用了构造函数，就代表一定要传入一个StringRedisTemplate对象。否则就报错。
 
+    // 将任意java对象存储到redis中。设置redis过期时间
     public void set(String key, Object value, Long time, TimeUnit timeUnit) {
         // value 需要被序列化成字符串
         stringRedisTemplate.opsForValue().set(key, JSONUtil.toJsonStr(value), time, timeUnit);
     }
 
+    // 将任意java对象存储到redis中。设置逻辑过期时间。
     public void setWithLogicalExpire(String key, Object value, Long time, TimeUnit timeUnit) {
-        // value 封装 到 RedisData
+        // value 封装 到 RedisData 带有逻辑过期时间
         RedisData redisData = new RedisData();
         redisData.setData(value);
         redisData.setExpireTime(LocalDateTime.now().plusSeconds(timeUnit.toSeconds(time)));
@@ -52,13 +60,12 @@ public class CacheClient {
             return JSONUtil.toBean(json, type);
         }
         // 判断是否命中空值
-        if (json != null) {
+        if (json != null) { // 命中了我们预先设置的redis空值防止穿透
             return null;
         }
 
         // 不存在 根据id查询数据库
         R r = dbFallback.apply(id);
-        // 不存在 返回错误
         if (r == null) {
             // 空值写入redis
             stringRedisTemplate.opsForValue().set(CACHE_SHOP_KEY + id, "", CACHE_NULL_TTL,
@@ -107,7 +114,7 @@ public class CacheClient {
                 // 未过期
                 return r;
             }
-            CACHE_REBUILD_EXECUTOR.submit(() -> {
+            CACHE_REBUILD_EXECUTOR.submit(() -> { // 独立线程，把任务交给线程池，会自动分配线程进行执行。
                 try {
                     // 重建缓存
                     R r1 = dbFallback.apply(id);

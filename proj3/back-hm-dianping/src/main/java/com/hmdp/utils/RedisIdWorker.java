@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter;
 @Component
 public class RedisIdWorker {
 
-    private StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     public RedisIdWorker(StringRedisTemplate stringRedisTemplate) {
         this.stringRedisTemplate = stringRedisTemplate;
@@ -30,10 +30,9 @@ public class RedisIdWorker {
         // 生成序列号
         // 避免重复 拼接一下日期
         String date = now.format(DateTimeFormatter.ofPattern("yyyy:MM:dd"));
+        // 返回的是“加 1 之后”的那个最新结果。
         long count = stringRedisTemplate.opsForValue().increment("icr:" + keyPrefix + ":" + date);
 
-
-//        return 0L;
         return timeStamp << COUNT_BITS | count;
     }
 

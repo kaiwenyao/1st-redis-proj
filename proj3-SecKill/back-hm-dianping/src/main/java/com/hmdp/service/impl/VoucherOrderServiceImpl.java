@@ -41,8 +41,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     @Lazy
     private IVoucherOrderService self;
     // 自己注入自己
-@Resource
-private RedissonClient redissonClient;
+    @Resource
+    private RedissonClient redissonClient;
+
     @Override
     public Result seckillVoucher(Long voucherId) {
         // 查询
@@ -77,7 +78,6 @@ private RedissonClient redissonClient;
         if (!isLock) {
             // 获取锁失败
             return Result.fail("一个人只允许下一单");
-
         }
         try {
             return self.createVoucherOrder(voucherId);

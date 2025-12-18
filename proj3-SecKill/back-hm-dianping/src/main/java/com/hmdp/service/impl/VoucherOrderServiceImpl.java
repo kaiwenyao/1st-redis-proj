@@ -11,6 +11,7 @@ import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
 import lombok.NonNull;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private ISeckillVoucherService seckillVoucherService;
     @Resource
     private RedisIdWorker redisIdWorker;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
     @Resource
     @Lazy
     private IVoucherOrderService self;
@@ -58,11 +61,26 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         Long userId = UserHolder.getUser().getId();
         // 锁是userId但是不能是对象因为每次都是新对象
         // 要用intern找到已经存在的对象。
-        synchronized (userId.toString().intern()) {
-            // 避免使用目标对象直接调用
-            // 自己注入自己
-            return self.createVoucherOrder(voucherId);
+//        synchronized (userId.toString().intern()) {
+//            // 避免使用目标对象直接调用
+//            // 自己注入自己
+//            return self.createVoucherOrder(voucherId);
+//        }
+        // 使用分布式锁：
+        // 创建锁对象
+        SimpleRedisLock lock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
+        boolean isLock = lock.tryLock(1200);
+        if (!isLock) {
+            // 获取锁失败
+            return Result.fail("一个人只允许下一单");
+
         }
+        try {
+            return self.createVoucherOrder(voucherId);
+        } finally {
+            lock.unlock();
+        }
+
     }
 
     @Transactional(rollbackFor = Exception.class)

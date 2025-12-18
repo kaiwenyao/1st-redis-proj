@@ -9,6 +9,8 @@ import com.hmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
+import lombok.NonNull;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +20,7 @@ import java.time.LocalDateTime;
 
 /**
  * <p>
- *  服务实现类
+ * 服务实现类
  * </p>
  *
  * @author 虎哥
@@ -30,8 +32,12 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     private ISeckillVoucherService seckillVoucherService;
     @Resource
     private RedisIdWorker redisIdWorker;
+    @Resource
+    @Lazy
+    private IVoucherOrderService self;
+    // 自己注入自己
+
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public Result seckillVoucher(Long voucherId) {
         // 查询
         SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
@@ -41,7 +47,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             return Result.fail("秒杀尚未开始!");
         }
         if (voucher.getEndTime().isBefore(LocalDateTime.now())) {
-            // 结束类
+            // 结束力
             return Result.fail("秒杀已经结束!");
         }
         // 判断库存
@@ -49,9 +55,18 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             // 库存不足
             return Result.fail("库存不足");
         }
+        Long userId = UserHolder.getUser().getId();
+        // 锁是userId但是不能是对象因为每次都是新对象
+        // 要用intern找到已经存在的对象。
+        synchronized (userId.toString().intern()) {
+            // 避免使用目标对象直接调用
+            // 自己注入自己
+            return self.createVoucherOrder(voucherId);
+        }
+    }
 
-
-
+    @Transactional(rollbackFor = Exception.class)
+    public Result createVoucherOrder(Long voucherId) {
         // 用户id
         Long userId = UserHolder.getUser().getId();
         int count = query().eq("user_id", userId).eq("voucher_id", voucherId).count();
@@ -59,6 +74,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
             // 用户已经购买过 不允许下单
             return Result.fail("用户已经购买过一次！");
         }
+
         // 都通过 扣减库存
         boolean success = seckillVoucherService.update()
                 .setSql("stock = stock - 1")

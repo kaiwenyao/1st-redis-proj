@@ -1,6 +1,11 @@
 server:
   port: 8081
 spring:
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB      # 单个文件最大大小
+      max-request-size: 100MB   # 单次请求最大大小（如果一次上传多个文件）
   application:
     name: hmdp
   datasource:

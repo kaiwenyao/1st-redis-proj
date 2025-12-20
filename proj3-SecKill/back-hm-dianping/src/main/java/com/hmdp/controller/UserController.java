@@ -1,13 +1,17 @@
 package com.hmdp.controller;
 
 
+import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
+import com.hmdp.entity.Blog;
 import com.hmdp.entity.User;
 import com.hmdp.entity.UserInfo;
 import com.hmdp.service.IUserInfoService;
 import com.hmdp.service.IUserService;
+import com.hmdp.utils.SystemConstants;
 import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
+import java.util.List;
 
 /**
  * <p>
@@ -90,4 +95,21 @@ public class UserController {
         // 返回
         return Result.ok(info);
     }
+
+
+// UserController 根据id查询用户
+
+    @GetMapping("/{id}")
+    public Result queryUserById(@PathVariable("id") Long userId){
+        // 查询详情
+        User user = userService.getById(userId);
+        if (user == null) {
+            return Result.ok();
+        }
+        UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
+        // 返回
+        return Result.ok(userDTO);
+    }
+
+
 }

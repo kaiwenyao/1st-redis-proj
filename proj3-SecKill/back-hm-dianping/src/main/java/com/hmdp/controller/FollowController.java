@@ -2,7 +2,6 @@ package com.hmdp.controller;
 
 
 import com.hmdp.dto.Result;
-import com.hmdp.entity.Follow;
 import com.hmdp.service.IFollowService;
 import org.springframework.web.bind.annotation.*;
 
